@@ -24,3 +24,5 @@ Spring Boot 프레임워크로 개발하는 학습용 게시판 프로젝트
 ## 개발 과정 문서화
 
 프로젝트 단계별로 변경된 요구사항은 [docs/senario.md](./docs/senario.md)에 작성된다.
+
+개발 중의 결정에 대한 배경이나 이유는 [docs/decision.md](./docs/decision.md)에 작성된다.
