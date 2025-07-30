@@ -31,6 +31,7 @@ dependencies {
 	errorprone("com.google.errorprone:error_prone_core:2.41.0")
 	errorprone("com.uber.nullaway:nullaway:0.12.7")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.projectlombok:lombok")
