@@ -26,6 +26,7 @@ repositories {
 	mavenCentral()
 }
 
+val mockitoAgent = configurations.create("mockitoAgent")
 dependencies {
 	implementation("org.jspecify:jspecify:1.0.0")
 	errorprone("com.google.errorprone:error_prone_core:2.41.0")
@@ -36,11 +37,17 @@ dependencies {
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	jvmArgs!!.add("-javaagent:${mockitoAgent.asPath}")
+    testLogging {
+        showStandardStreams = true
+        outputs.upToDateWhen { false }
+    }
 }
 
 tasks.withType<JavaCompile> {

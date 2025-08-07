@@ -230,3 +230,226 @@ JSpecify는 runtime에 동작하지 않는다는 것은 알았지만 컴파일 �
 호기심에 Kotlin Spring으로 non-nullable 타입을 사용하면 어떻게 되나 확인해보니 null check는 바로 적용되었다. 그러나 단순 null check 이상의 제약 검증은 여전히 Bean validation을 해야 되기 때문에 실질적으로는 큰 차이가 나지 않을 것 같다.
 
 하지만 Bean validation은 주로 요청에 대해서만 검증을 하기 때문에 앞써 여러 DTO를 같은 파일에 묶었을 때 일관성이 떨어진다. 복합 객체의 경우, 어떤 객체가 요청에만 관련이 있는지 헷갈린다. 그래서 요청과 관련된 (=검증이 필요한) DTO와 응답에 관련된 (=검증이 필요없는) DTO 클래스로 나누었다.
+
+## API Endpoint Testing
+
+HTTP / REST 프로토콜이 잘 구현되었는지 테스트를 하기 위해 Spring Testing과 Mockito를 사용했다.
+
+Controller의 역할은 크게 client의 입력 처리와 결과 통보로 구분할 수 있다.
+
+1. Client의 입력 처리
+    - 형식이 올바른가?
+        - API 규약에 맞게 필요한 정보가 포함되었는가?
+        - API 규약에 맞게 필요한 데이터 구조를 가졌는가?
+    - 값이 유효한가? (=! 올바른가)
+        - 타입과 범위 등 하나의 요청을 단독으로 판별할 수 있는 데이터의 정의역만
+            - 회원 가입의 사용자명 중복과 같은 비즈니스 로직은 다른 레이어에서 처리
+2. 결과 통보
+    - 적절한 HTTP status code를 반환하는가?
+    - 적절한 HTTP header를 반환하는가?
+    - 적절한 HTTP body를 반환하는가?
+
+Controller의 역할만을 테스트하고 싶으므로 기타 컴포넌트가 영향을 주는 것을 방지하기 위해 mocking으로 대체할 수 있다.  
+Mocking을 하면 덤으로 입력값 검증 외 비즈니스 로직에 의해 발생할 수 있는 상황까지 모델링할 수 있다.
+
+### Mockito
+
+Java 21 이상부터 Mockito를 사용하면 아래와 같은 경고 메시지를 볼 수 있다.
+
+```
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (~/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy-agent/1.17.6/17b32fd9f57deef02842f7f05abc4ad8127fe34e/byte-buddy-agent-1.17.6.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+```
+
+경고문에 적힌 Mockito 공식 문서는 이 커밋 작성 시점을 기준으로 다음과 같이 안내한다:
+
+```kotlin
+val mockitoAgent = configurations.create("mockitoAgent")
+dependencies {
+    testImplementation(libs.mockito)       // libs가 정의되지 않아 오류 발생
+    mockitoAgent(libs.mockito) { isTransitive = false }    // libs가 정의되지 않아 오류 발생
+}
+tasks {
+    test {
+        jvmArgs.add("-javaagent:${mockitoAgent.asPath}")   // jvmArgs가 MutableList<String>?이기 때문에 오류 발생
+    }
+}
+```
+
+`dependencies`의 문제는 [이 stackoverflow 답변](https://stackoverflow.com/a/79668033)을 참고해서 `mockitoAgent("org.mockito:mockito-core") { isTransitive = false }`로 변경하면 된다.
+
+그러나 `tasks`의 경우, 위 답변대로 `jvmArgs()`를 사용하면 setter를 호출해 존재할지도 모를 다른 JVM 인자를 덮어쓰게 된다. 이 경우에는 상관이 없지만, 그래도 mockito 의존성을 `추가`한다는 의미를 보존하고 싶다면 `jvmArgs.add()`를 사용하는 것이 맞다. IDE의 도움을 받아 `jvmArgs`를 반환하는 `getJvmArgs()`의 JavaDoc을 찾아보면 아래와 같이 적혀있다.
+
+```java
+// org.gradle.api.tasks.testing.Test.java
+
+/**
+ * {@inheritDoc}
+ */
+@Override
+@ToBeReplacedByLazyProperty
+public List<String> getJvmArgs() {
+    return forkOptions.getJvmArgs();
+}
+
+// org.gradle.process.JavaForkOptions.java
+/**
+ * Returns the extra arguments to use to launch the JVM for the process. Does not include system properties and the
+ * minimum/maximum heap size.
+ *
+ * @return The immutable list of arguments. Returns an empty list if there are no arguments.
+ */
+@ToBeReplacedByLazyProperty
+@Nullable @Optional @Input
+List<String> getJvmArgs();
+```
+
+JavaDoc은 인자가 없어도 최소 `empty list`를 반환한다고 하는데 왜 `@Nullable`이 붙어있는지 모르겠다.  
+JavaDoc이 틀렸을 경우에는 바로 알 수 있도록 `jvmArgs!!.add()`를 사용하자.  
+
+- `Intellij 2025.2`로 업데이트 이후에 IDE로 빌드하면 non-nullable로 인식해서 `!!`이 필요없다
+- 그러나 `gradle 8.14.3`에서 실행할 때는 필요하다
+
+다만 아직 Intellij에서 테스트를 실행하면 여전히 처음 본 경고문에 뜬다.
+
+- 설정에서 Gradle을 사용하게 변경해도, Gradle Tool Window에서 Tasks > verification > test 로 실행해도 동일하다
+    - IDE에서 JVM 인자를 덮어쓰기 때문이다
+    - 아직은 직접 각 run config를 수정하는 것 말고는 해결 방법이 없는 것으로 보인다
+
+### Assertion Integration
+
+Controller를 테스트할 때 MockMvc로 가상으로 HTTP 요청을 보낸다.  
+이때 Spring은 몇 가지 선택지를 기본으로 제공한다.
+
+1. Hamcrest
+2. AssertJ
+3. HtmlUnit
+
+HtmlUnit은 HTML 기반 뷰를 테스트할 때 사용하므로 Hamcrest와 AssertJ만 살펴보자.
+
+```java
+@Autowired MockMvc mock1; // Hamcrest
+@Autowired MockMvcTester mock2; // AssertJ
+
+@Test
+void test() {
+    var url = "/test";
+    var json = "{}";
+
+    // Hamcrest
+    var response = mock1.perform(   // throws Exception
+        post(url)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json);
+    ).andDo(print());   // Optional
+
+    response.andExpectAll(
+        status().isOk()
+    );
+
+    // AssertJ
+    var response = mock2.post().uri(url)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(json)
+        .exchange();
+    
+    assertThat(response)
+        .debug()    // Optional
+        .hasStatus(HttpStatus.Ok);
+}
+```
+
+간단한 테스트에서는 둘의 가독성은 비슷하다.  
+AssertJ는 static import할 필요가 없고 checked exception을 던지지 않는데다 비동기도 별도의 처리가 필요 없다.
+
+그러나 응답의 여러 항목을 검증하려면 Fluent API의 한계로 `assertThat()`을 개별적으로 할 필요가 있다.  
+그러나 Hamcrest는 `.expectAll()`에 ResultMatcher를 인자로 주면 되기 때문에 확장하기에 더 편하다.
+
+Fluent API는 call chain이 전부 선형적으로 의존하게 되므로 `this`가 중간에 바뀌면 사용성이 크게 떨어진다.  
+Spring Security에서 람다 DSL을 도입한 것도 이러한 불편함을 해소하기 위한 것으로 보인다.
+
+> [Kotlin based DSL](https://kotlinlang.org/docs/type-safe-builders.html)이 생각나는 건 나뿐인가..?  
+> 정작 Kotlin에서는 `apply {}`로 묶는 것이 가능해 새로운 DSL 없이 바로 사용할 수 있겠지만..
+
+지금은 일관적인 동기/비동기 처리보다는 간편한 데이터 검증이 더 중요하므로 Hamcrest를 선택했다.  
+만약 동기 / 비동기가 섞여 있거나 Kotlin을 사용하고 있었다면 AssertJ를 선택했을 것이다.
+
+> 다른 라이브러리는 왜 고려하지 않았는가?
+>
+> 외부 의존성은 아웃소싱하는 것과 비슷하다. 직접 작업하지는 않지만 그렇다고 방치하고 잊어버릴 수도 없다. 대표적으로 Log4Shell 사태에서 알 수 있듯이 라이브러리도 공격 벡터가 될 수 있기 때문이다. 오히려 외부에서 관리하기 때문에 빠르게 패치하기 어려울 수도 있다.
+>
+> 외부 라이브러리를 사용할 때는 이런 위험보다도 더 큰 이점이 있을 때만 도입하고 가능하면 이미 사용하고 있는 라이브러리 내에서 해결하는 것이 바람직하다. 의존성을 추가할 때는 Spring과 같이 충분한 전문 인력이 관리하는 경우를 제외하면 되도록 기능이 적어 공격 면적이 작은 라이브러리를 선택하는 것이 좋다.
+
+### Json 직렬화
+
+Client의 입력값을 서버가 올바르게 검증하는지 확인하기 위해 다음 시나리오를 생각해 볼 수 있다.
+
+1. 필요한 필드값이 존재하지 않는 경우
+2. 필요한 필드값이 null인 경우
+3. 필요한 필드값이 유효범위 밖인 경우
+4. 불필요한 필드값이 존재하는 경우
+
+테스트 코드를 작성할 때 1, 2를 구분하기 위해서는 object mapper의 설정을 변경해줘야 한다.  
+그러나 나머지 테스트 코드는 전부 동일하므로 별도의 테스트 케이스로 분리하는 것은 원히지 않았다.
+
+이 문제는 JUnit의 `@ParameterizedTest`로 object mapper의 설정을 주입하고 매 테스트 케이스 전에 설정을 초기화 해주면 된다.  
+Stream<E>를 반환하는 static 함수를 정의하고 `@MethodSource("$함수명")을 사용하면 된다.  
+반복적으로 쓰인다면 함수와 같이 함수명을 담은 static final String 상수를 선언해주면 편리하다.
+
+- Method reference에서 함수명을 뽑아낼 수 있으면 정말 좋았겠지만 Java 24 기준으로 그건 불가능하다.
+
+### Date Matcher
+
+JSON에는 날짜/시간 형식이 따로 정의되어 있지 않다. [공식문서](www.json.org/)에 따르면 기본 자료형은 아래와 같다.
+
+- string
+- number
+- boolean
+- null
+- ordered list of value (array)
+- unordered set of name/value pair (object)
+
+JSON이 JS Object Notation의 약자인 만큼 JS의 `JSON.stringify()`를 참고하면 일반적인 상황에서는 호환될 것이다.
+
+JS는 날짜/시간을 다룰 때 `Date` 클래스를 사용한다. 그리고 `Date.toJson()`은 ISO 8601 형식을 따른다.
+
+Spring Boot 또한 기본으로는 ISO 8601 형식에 따라 날짜와 시간을 직렬화한다. 그러나 아래의 설정으로 Unix timestamp로 변경할 수 있다.
+
+`spring.jackson.serialization.write-dates-as-timestamps=true`
+
+문제는 테스트 코드를 작성할 때 Hamcrest에는 날짜와 시간을 검증할 수 있는 기능이 없다. 따라서 직접 `Matcher`를 구현해야 한다.
+
+직접 구현하지 말아야 할 대표적인 분야로 암호와 시간이 손꼽히는 만큼 당연히 라이브러리를 먼저 찾아봤다. [Hamcrest Date](https://github.com/eXparity/hamcrest-date)가 존재하긴 했으나 이 라이브러리는 이미 날짜 타입으로 변환된 이후의 값을 검증하기 위할 뿐, `jsonPath`가 반환할 문자열을 변환하는 기능은 제공하지 않았다. 2023.07 이후 업데이트가 없는 것은 덤.
+
+이렇게 JSON이 기본적으로 지원하지 않는 자료형을 검증할 때는 API 응답의 검증 이후 별도의 JSON 역직렬화를 통해 개별적으로 값을 추출한 이후, 해당 값을 검증하는 것이 일반적인 것 같다. 하지만 테스트 코드에 세부 로직을 매 테스트 케이스마다 작성하는 것이 마음에 들지 않았다.
+
+테스트 코드를 작성하는 이유는 복잡한 구현이 올바르게 작동하는지 검사하기 위함이다.  
+다시 말하면, `어떻게` 하는지 (=imperative)가 `무엇`을 하는지(=declarative)와 일치하는지를 확인하려는 것이다.  
+그런데 그 테스트 코드에서 다시 `어떻게` (=imperative)를 쓰고 있으면 양쪽에서 같은 실수를 하지 않았다고 장담할 수 있을까? 그래서 테스트 케이스를 작성할 때는 최대한 선언형 (declarative)으로, 직관적으로 작성하는 것이 좋다고 생각한다.
+
+```java
+// 이상적인 테스트 코드 - Kotlin extension function이면 가능
+jsonPath("$.createdAt").isATimestamp();
+
+// Java에서의 최선
+jsonPath("$.createdAt").value(isATimeStamp());
+```
+
+단순히 타입만 검증하는 것이 아니라 값도 검증하고 싶다면 매번 새로운 Matcher를 구현하는 것은 많이 번거로울 것이다. 그래서 Stream API처럼 `함수형 패러다임`을 적용해 타입 변환과 값의 검증을 분리하기로 했다.
+
+```java
+jsonPath("$.createdAt").value(
+    convertedBy(/*Instant | ZonedDateTime*/::parse)
+        .item(instanceOf(/*Instant | ZonedDateTime*/.class))
+);
+```
+
+원하는 API를 정했으니 이제 구현만 하면 끝난다.
+
+`.value()`는 내부적으로 JSON 기본형으로 변환한 다음에 Matcher에게 넘겨준다. 따라서 새로 정의할 Matcher는 변환 함수 `T -> R`와 값을 검증하는 `Matcher<? super R>`를 받는 `Matcher<T>`여야 한다.
+
+세부 구현은 [ConversionMatcher.java](../backend/src/test/java/io/github/apatchydev/ConversionMatcher.java)를 참고.
