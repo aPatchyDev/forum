@@ -453,3 +453,20 @@ jsonPath("$.createdAt").value(
 `.value()`는 내부적으로 JSON 기본형으로 변환한 다음에 Matcher에게 넘겨준다. 따라서 새로 정의할 Matcher는 변환 함수 `T -> R`와 값을 검증하는 `Matcher<? super R>`를 받는 `Matcher<T>`여야 한다.
 
 세부 구현은 [ConversionMatcher.java](../backend/src/test/java/io/github/apatchydev/ConversionMatcher.java)를 참고.
+
+## ORM
+
+DB를 호출하는 방법은 크게 2가지로 나뉜다.
+
+- SQL : SQL문을 직접 작성하고 결과를 직접 파싱
+- ORM : 테이블 데이터를 객체로 자동 변환해주는 라이브러리
+
+ORM은 타입 안정성, 연결 관리, 쿼리문 자동생성 등 다양한 편의기능을 제공하기 때문에 사용한다.
+
+Spring에서는 `Spring Data JPA / Spring Data JDBC` 중 선택할 수 있다.
+
+Spring 프로젝트에서는 JPA를 많이 사용한다. 하지만 JPA는 캐싱, dirty tracking 등 복잡한 기능들을 제공하고 OOP에 가까운 모델을 제공해 내부적으로 DB에 어떻게 접근하고 데이터를 관리하는지 파악하기 어렵다.
+
+그에 비해 Spring Data JDBC는 DB의 원형에 더 가까운 모델을 제공해 직관적이다. 타입 안정성과 쿼리문 자동생성 등 최소한의 편의기능을 제공하되 데이터 모델은 직접 정의해야 되고 캐싱 없이 저장을 명시적으로 수행한다.
+
+이 프로젝트는 데이터 모델이 단순하고 웹 개발 학습을 위함이기 때문에 단순한 Spring Data JDBC를 채택했다.
