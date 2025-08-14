@@ -470,3 +470,38 @@ Spring 프로젝트에서는 JPA를 많이 사용한다. 하지만 JPA는 캐싱
 그에 비해 Spring Data JDBC는 DB의 원형에 더 가까운 모델을 제공해 직관적이다. 타입 안정성과 쿼리문 자동생성 등 최소한의 편의기능을 제공하되 데이터 모델은 직접 정의해야 되고 캐싱 없이 저장을 명시적으로 수행한다.
 
 이 프로젝트는 데이터 모델이 단순하고 웹 개발 학습을 위함이기 때문에 단순한 Spring Data JDBC를 채택했다.
+
+## DB Schema
+
+![er diagram](./erd.png)
+
+![schema](./schema.png)
+
+ERD를 기반으로 스키마를 정의하면서 사용할 자료형을 정할 때 다음 사항들을 고려했다.
+
+Member
+
+- password : varchar(255)
+    - 일반적으로 비밀번호는 salt를 사용해 암호화하여 저장한다
+    - modular crypt format은 암호화 알고리즘, salt, digest를 모두 포함해 하나의 문자열로 표현한다
+    - bcrypt의 경우, 60자를 사용한다
+    - 추후 암호화 알고리즘이 변경될 수 있으므로 60자 이상을 담을 수 있는 자료형을 선택한다
+
+Post / Comment
+
+- body : TEXT
+    - 255자는 너무 짧다
+    - varchar vs text
+        - varchar는 레코드 내에 저장되기 때문에 DB의 레코드 크기 제한에도 영향을 받는다
+        - text는 레코드 밖에 저장되기 때문에 온전히 자료형의 최대 크기까지 채울 수 있다
+        - varchar는 완전히 인덱스 가능
+- title : varchar(255)
+    - 왜 Post.title은 varchar?
+        - 제목 검색을 빠르게 하기 위해
+
+| Type | Maximum length | |
+| --- | --- | --- |
+| TINYTEXT | 255 bytes | 0.25 KiB |
+| TEXT | 65,535 bytes | 64 KiB |
+| MEDIUMTEXT | 16,777,215 bytes | 16 MiB |
+| LONGTEXT | 4,294,967,295 bytes | 4 GiB |
