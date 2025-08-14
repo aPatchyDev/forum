@@ -1,12 +1,13 @@
-package io.github.apatchydev.post.v1;
+package io.github.apatchydev.post.v1.web;
 
-import io.github.apatchydev.post.v1.PostRequestDTO.CreateComment;
-import io.github.apatchydev.post.v1.PostRequestDTO.CreatePost;
-import io.github.apatchydev.post.v1.PostRequestDTO.EditPost;
-import io.github.apatchydev.post.v1.PostResponseDTO.Comment;
-import io.github.apatchydev.post.v1.PostResponseDTO.Post;
-import io.github.apatchydev.post.v1.PostResponseDTO.PostInfo;
-import io.github.apatchydev.post.v1.PostResponseDTO.PostView;
+import io.github.apatchydev.post.v1.web.PostRequestDTO.CreateComment;
+import io.github.apatchydev.post.v1.web.PostRequestDTO.CreatePost;
+import io.github.apatchydev.post.v1.web.PostRequestDTO.EditPost;
+import io.github.apatchydev.post.v1.web.PostResponseDTO.Comment;
+import io.github.apatchydev.post.v1.web.PostResponseDTO.Post;
+import io.github.apatchydev.post.v1.web.PostResponseDTO.PostInfo;
+import io.github.apatchydev.post.v1.web.PostResponseDTO.PostView;
+import io.github.apatchydev.post.v1.service.PostService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +57,7 @@ public class PostController {
         return new PostView(tmp2, tmp3);
     }
 
-    @PostMapping("/{postId}")
+    @PatchMapping("/{postId}")
     public ResponseEntity<Void> updatePost(@PathVariable @Min(1) int postId, @Valid @RequestBody EditPost post) {
         var success = postService.todo("update post of id " + postId + " to " + post);
         return ResponseEntity.ok().build();

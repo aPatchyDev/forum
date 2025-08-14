@@ -1,6 +1,7 @@
-package io.github.apatchydev.user.v1;
+package io.github.apatchydev.session.v1.web;
 
 import io.github.apatchydev.WebApiTest;
+import io.github.apatchydev.session.v1.service.SessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.*;

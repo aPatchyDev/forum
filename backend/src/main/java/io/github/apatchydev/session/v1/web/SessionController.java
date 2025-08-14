@@ -1,10 +1,12 @@
-package io.github.apatchydev.user.v1;
+package io.github.apatchydev.session.v1.web;
 
-import io.github.apatchydev.user.v1.UserRequestDTO.Login;
+import io.github.apatchydev.session.v1.service.SessionService;
+import io.github.apatchydev.session.v1.web.SessionRequestDTO.Login;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +26,7 @@ public class SessionController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/current")
+    @DeleteMapping
     public ResponseEntity<Void> logout() {
         sessionService.todo("logout");
         return ResponseEntity.noContent().build();

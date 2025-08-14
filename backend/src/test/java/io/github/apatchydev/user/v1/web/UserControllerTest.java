@@ -1,10 +1,11 @@
-package io.github.apatchydev.user.v1;
+package io.github.apatchydev.user.v1.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import io.github.apatchydev.WebApiTest;
-import io.github.apatchydev.user.v1.UserRequestDTO.ChangePassword;
-import io.github.apatchydev.user.v1.UserRequestDTO.CreateUser;
-import io.github.apatchydev.user.v1.UserRequestDTO.DeleteUser;
+import io.github.apatchydev.user.v1.service.UserService;
+import io.github.apatchydev.user.v1.web.UserRequestDTO.ChangePassword;
+import io.github.apatchydev.user.v1.web.UserRequestDTO.CreateUser;
+import io.github.apatchydev.user.v1.web.UserRequestDTO.DeleteUser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -194,7 +195,7 @@ class UserControllerTest extends WebApiTest {
         // When
         var request = json(new ChangePassword(oldPassword, newPassword));
         var response = mockMvc.perform(
-            post(baseUrl + "/{username}/password", username)
+            patch(baseUrl + "/{username}/password", username)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
@@ -217,7 +218,7 @@ class UserControllerTest extends WebApiTest {
         // When
         var request = json(new ChangePassword(oldPassword, newPassword));
         var response = mockMvc.perform(
-            post(baseUrl + "/{username}/password", username)
+            patch(baseUrl + "/{username}/password", username)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
@@ -240,7 +241,7 @@ class UserControllerTest extends WebApiTest {
         // When
         var request = json(new ChangePassword(oldPassword, newPassword));
         var response = mockMvc.perform(
-            post(baseUrl + "/{username}/password", username)
+            patch(baseUrl + "/{username}/password", username)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
@@ -266,7 +267,7 @@ class UserControllerTest extends WebApiTest {
         // When
         var request = json(new ChangePassword(oldPassword, newPassword));
         var response = mockMvc.perform(
-            post(baseUrl + "/{username}/password", username)
+            patch(baseUrl + "/{username}/password", username)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
@@ -292,7 +293,7 @@ class UserControllerTest extends WebApiTest {
         // When
         var request = json(new ChangePassword(oldPassword, newPassword));
         var response = mockMvc.perform(
-            post(baseUrl + "/{username}/password", username)
+            patch(baseUrl + "/{username}/password", username)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());

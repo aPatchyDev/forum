@@ -1,4 +1,4 @@
-package io.github.apatchydev.post.v1;
+package io.github.apatchydev.post.v1.web;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AccessLevel;
@@ -8,15 +8,15 @@ import lombok.NoArgsConstructor;
 public final class PostRequestDTO {
     // Post management related
     public record CreatePost(
-            @NotBlank String title,
-            @NotBlank String body
+        @NotBlank String title,
+        @NotBlank String body
     ) {}
 
     public record EditPost(
-            @NotBlank String body
+        @NotBlank String body
     ) {}
 
     public record CreateComment(
-            @NotBlank String body
+        @NotBlank String body
     ) {}
 }

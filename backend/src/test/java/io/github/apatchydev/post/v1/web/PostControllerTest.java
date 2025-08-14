@@ -1,10 +1,11 @@
-package io.github.apatchydev.post.v1;
+package io.github.apatchydev.post.v1.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import io.github.apatchydev.WebApiTest;
-import io.github.apatchydev.post.v1.PostRequestDTO.CreateComment;
-import io.github.apatchydev.post.v1.PostRequestDTO.CreatePost;
-import io.github.apatchydev.post.v1.PostRequestDTO.EditPost;
+import io.github.apatchydev.post.v1.service.PostService;
+import io.github.apatchydev.post.v1.web.PostRequestDTO.CreateComment;
+import io.github.apatchydev.post.v1.web.PostRequestDTO.CreatePost;
+import io.github.apatchydev.post.v1.web.PostRequestDTO.EditPost;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -275,7 +276,7 @@ class PostControllerTest extends WebApiTest {
         // When
         var request = json(new EditPost(body));
         var response = mockMvc.perform(
-            post(baseUrl + "/{postId}", postId)
+            patch(baseUrl + "/{postId}", postId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
@@ -295,7 +296,7 @@ class PostControllerTest extends WebApiTest {
 
         // When
         var response = mockMvc.perform(
-            post(baseUrl + "/{postId}", postId)
+            patch(baseUrl + "/{postId}", postId)
         ).andDo(print());
 
         // Then
@@ -315,7 +316,7 @@ class PostControllerTest extends WebApiTest {
         // When
         var request = json(new EditPost(body));
         var response = mockMvc.perform(
-            post(baseUrl + "/{postId}", postId)
+            patch(baseUrl + "/{postId}", postId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
@@ -337,7 +338,7 @@ class PostControllerTest extends WebApiTest {
         // When
         var request = json(new EditPost(body));
         var response = mockMvc.perform(
-            post(baseUrl + "/{postId}", postId)
+            patch(baseUrl + "/{postId}", postId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
@@ -359,7 +360,7 @@ class PostControllerTest extends WebApiTest {
         // When
         var request = json(new EditPost(body));
         var response = mockMvc.perform(
-            post(baseUrl + "/{postId}", postId)
+            patch(baseUrl + "/{postId}", postId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request)
         ).andDo(print());
