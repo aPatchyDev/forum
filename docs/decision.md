@@ -505,3 +505,48 @@ Post / Comment
 | TEXT | 65,535 bytes | 64 KiB |
 | MEDIUMTEXT | 16,777,215 bytes | 16 MiB |
 | LONGTEXT | 4,294,967,295 bytes | 4 GiB |
+
+### Comment ID
+
+원래는 Comment ID의 기본키를 (Post ID, Per-post ID)로 정의하려고 했다.  
+사용자 입장에서는 이게 가장 직관적이었기 때문이다.  
+어떤 게시글이든 그 게시글의 n번째 댓글의 ID가 n인 것이 가장 말이 된다.
+
+하지만 이런 `group-wise auto increment`는 생성하기 굉장히 어렵다는 것을 알게 되었다.  
+가장 대중적인 PostgreSQL, MariaDB를 봐도 이 기능을 제대로 지원해주지는 않는다. (MariaDB의 MyISAM 엔진은 지원하지만 그 대가로 포기해야 되는 기능이 너무 많다)
+
+굳이 구현해야겠다면 DB 내 `trigger`를 만들어 Comment 삽입 시 `max(id) + 1 WHERE postID = %`로 만들 수는 있지만 삽입 시 부하가 걸리고 race condition이 발생한다. Transaction은 각 요청의 원자성을 보장하지만 요청의 순차적 처리는 보장하지 않기 때문에 `max(id)`를 조회하는 순간과 새로운 id의 Comment가 삽입되는 순간 사이에 다른 Comment 삽입 요청이 처리될 수 있다. Race condition을 해결하기 위해 postID별 lock을 잡으면 부하는 더 커진다.
+
+> DB에서 per-group sequence를 생성하기 어려우니 global sequence를 사용해야 하는데, 이때 사용자에게는 여전히 per-group sequence를 제공할 수는 없을까?
+>
+>
+> DB에 저장되는 Comment Entity가 동일 Post ID에 대해 Comment ID가 strictly increasing이면 동일 Post ID의 Comment 목록에서의 순번을 사용자에게 ID로 제공할 수 있다.
+> 
+> | 외부 ID | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+> | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+> | 내부 ID | 3 | 5 | 8 | 11 | 21 | 28 | 33 | 41 |
+>
+> 반대로 사용자의 요청에서 A번부터 N개의 댓글을 조회하려고 한다면 이렇게 다시 찾을 수 있을 것이다.
+>
+> ```sql
+> SELECT * FROM comments WHERE 게시글 ID = % ORDER BY id ASC LIMIT N OFFSET A
+> ```
+
+게시판 시스템에서 댓글을 조회할 때 하나의 댓글을 요청하는 경우는 보통 없다. 어차피 페이지 단위로 요청하거나 전체를 요청할 테니 N이 너무 작아서 정렬하는 페널티가 안 할 때보다 큰 경우는 없을 것이다.
+
+그러나 한 게시글에 댓글이 폭증하여 OFFSET이 커질 경우에는 조회에 성능 저하가 발생할 수 있다. 댓글이 삭제되지 않기 때문에 N번째 댓글의 ID는 항상 동일할 것이고 순번 -> ID 캐싱이 가능하다. 요구사항에서 이 경우를 고려하지는 않았지만 필요해진다면 새로운 lookup 테이블을 만들어 X개의 댓글마다 순번과 내부 댓글 ID를 저장하면 될 것이다.
+
+> 정확히 언제부터 얼마씩 캐싱해야 하는지는 모니터링으로 측정해야 되겠지만 아래는 단순한 예시다.
+>
+> | 게시글 ID | 댓글 순번 |  댓글 ID  |
+> | --- | --- | --- |
+> | 42 | 10,000 | 234,567 |
+> | 42 | 20,000 | 6,542,232 |
+>
+> `GET /posts/42/comments?offset=23675&limit=25`
+>
+> ```sql
+> SELECT * FROM comments WHERE 게시글 ID = 42 AND id >= (
+>     SELECT 댓글 ID FROM comment_lut WHERE 게시글 ID = 42 AND 댓글 순번 = 20,000
+> ) ORDER BY id ASC LIMIT 25 OFFSET 3,675
+> ```

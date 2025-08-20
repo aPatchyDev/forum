@@ -1,0 +1,17 @@
+services:
+  mariadb:
+    image: 'mariadb:latest'
+    container_name: forum-mariadb-dev-container
+    environment:
+      - 'MARIADB_DATABASE=dev'
+      - 'MARIADB_PASSWORD=secret'
+      - 'MARIADB_ROOT_PASSWORD=1234'
+      - 'MARIADB_USER=dev'
+    ports:
+      - '3306:3306'
+    volumes:
+      - forum_maria:/var/lib/mysql
+
+volumes:
+  forum_maria:
+    name: forum_maria_dev
